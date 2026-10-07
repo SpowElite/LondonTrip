@@ -5,9 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>London Trip Planner</title>
   
+  <!-- PWA & Homescreen Icons (Apple & Android) -->
+  <link rel="icon" type="image/jpeg" href="image.jpg">
+  <link rel="apple-touch-icon" href="image.jpg">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="London Trip">
+  <meta name="application-name" content="London Trip">
+  
+  <!-- Biblioteken über CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <!-- WICHTIG: Babel Version 7, damit moderne Syntax (...) funktioniert -->
   <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.6/babel.min.js"></script>
 
   <style>
@@ -33,9 +44,10 @@
 </head>
 <body class="bg-slate-900 text-white antialiased">
   <div id="root">
+    <!-- Lade-Screen, während React startet -->
     <div style="display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; color: white; font-family: sans-serif;">
       <div style="width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
-      <p style="font-weight: bold; tracking: 1px;">Lade London Trip...</p>
+      <p style="font-weight: bold; letter-spacing: 1px;">Lade London Trip...</p>
       <p style="font-size: 12px; opacity: 0.5; margin-top: 10px;">Wenn dies länger als 5 Sekunden dauert, blockiert dein Browser die Skripte.</p>
       <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
     </div>
@@ -87,9 +99,8 @@
     // ⚙️ DEINE JSONBIN DATEN HIER EINTRAGEN
     // ACHTUNG: Die ' ' Anführungszeichen MÜSSEN stehen bleiben!
     // ==========================================
-    const JSONBIN_BIN_ID = '6ac62760ffd5d1605355a6fc';
-    const JSONBIN_API_KEY = '$2a$10$wRRd3MBLjIYLxJ/WR6PV/uLAJ3SQgFHItid6Fn.UDL7RmP.cceTrG';
-
+    const JSONBIN_BIN_ID = 'DEINE_BIN_ID_HIER';
+    const JSONBIN_API_KEY = 'DEIN_API_KEY_HIER';
 
     const initialItineraryData = [
       {
@@ -432,6 +443,14 @@
                 </div>
               </div>
               
+              {/* NEU: App Logo Einbindung */}
+              <img 
+                src="image.jpg" 
+                alt="Logo" 
+                className={`w-24 h-24 object-cover rounded-3xl mb-5 shadow-xl transition-all ${isHighContrast ? 'border-2 border-black' : 'border border-white/50'}`}
+                onError={(e) => { e.target.style.display = 'none'; }} 
+              />
+
               <h1 className={`text-4xl md:text-5xl font-extrabold tracking-tight mb-0 text-center ${isHighContrast ? 'text-black' : 'text-transparent bg-clip-text bg-gradient-to-r from-slate-800 to-blue-800 dark:from-white dark:to-blue-300'}`}>
                 London Trip
               </h1>
