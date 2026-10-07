@@ -6,8 +6,8 @@
   <title>London Trip Planner</title>
   
   <!-- PWA & Homescreen Icons (Apple & Android) -->
-  <link rel="icon" type="image/jpeg" href="image.PNG">
-  <link rel="apple-touch-icon" href="image.PNG">
+  <link rel="icon" type="image/png" href="Image.PNG">
+  <link rel="apple-touch-icon" href="Image.PNG">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -32,7 +32,7 @@
       if(root) {
         root.innerHTML = '<div style="padding: 30px; color: white; background: #7f1d1d; min-height: 100vh; font-family: sans-serif;">' +
           '<h2 style="font-weight: bold; font-size: 24px; margin-bottom: 10px;">App konnte nicht starten 🚨</h2>' +
-          '<p style="font-size: 16px; margin-bottom: 20px;">' + event.message + '</p>' +
+          '<p style="font-size: 16px; margin-bottom: 20px;">' + (event.message || 'Ein unbekannter Script-Fehler ist aufgetreten.') + '</p>' +
           '<div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px;">' +
           '<p style="font-size: 14px; margin-bottom: 10px;"><b>Häufige Ursache:</b> Hast du beim Eintragen der JSONBin ID oder des Keys versehentlich die Anführungszeichen gelöscht?</p>' +
           '<p style="font-size: 14px; font-family: monospace; color: #a5b4fc;">Richtig:<br>const JSONBIN_BIN_ID = \'deine-id\';</p>' +
@@ -96,8 +96,7 @@
     const renderIcon = (name, props) => <SvgIcon name={name} {...props} />;
 
     // ==========================================
-    // ⚙️ DEINE JSONBIN DATEN HIER EINTRAGEN
-    // ACHTUNG: Die ' ' Anführungszeichen MÜSSEN stehen bleiben!
+    // ⚙️ FEST EINGEBAUTE JSONBIN DATEN
     // ==========================================
     const JSONBIN_BIN_ID = '6ac62760ffd5d1605355a6fc';
     const JSONBIN_API_KEY = '$2a$10$wRRd3MBLjIYLxJ/WR6PV/uLAJ3SQgFHItid6Fn.UDL7RmP.cceTrG';
@@ -271,10 +270,6 @@
       }, [activeSelections, completedItems, ticketsSecured, tripData, budgetLimit, extraExpenses]);
 
       const syncToCloud = async () => {
-        if(JSONBIN_BIN_ID === 'DEINE_BIN_ID_HIER' || !JSONBIN_BIN_ID) {
-          alert('⚠️ Bitte trage deine JSONBin ID und API Key im Code ein.');
-          return;
-        }
         setIsSyncing(true);
         triggerHaptic(50);
         try {
@@ -291,7 +286,7 @@
           alert('✅ Fortschritt erfolgreich in der Cloud gespeichert!');
         } catch(error) {
           console.error('Sync Error:', error);
-          alert('❌ Fehler beim Speichern in der Cloud. Sind ID und Key korrekt?');
+          alert('❌ Fehler beim Speichern in der Cloud.');
         } finally {
           setIsSyncing(false);
         }
@@ -443,9 +438,8 @@
                 </div>
               </div>
               
-              {/* NEU: App Logo Einbindung */}
               <img 
-                src="image.jpg" 
+                src="Image.PNG" 
                 alt="Logo" 
                 className={`w-24 h-24 object-cover rounded-3xl mb-5 shadow-xl transition-all ${isHighContrast ? 'border-2 border-black' : 'border border-white/50'}`}
                 onError={(e) => { e.target.style.display = 'none'; }} 
