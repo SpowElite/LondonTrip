@@ -6,43 +6,91 @@
   <title>London Trip Planner</title>
   
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <!-- FIX: Update auf Babel 7 Standalone, damit die moderne Syntax sauber geladen wird -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://unpkg.com/lucide-react@0.292.0/dist/umd/lucide-react.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.6/babel.min.js"></script>
 
   <style>
-    /* Verhindert Pull-to-Refresh auf mobilen Geräten für eine App-ähnliche Erfahrung */
     body { overscroll-behavior-y: none; }
-    .high-contrast-mode * {
-      text-shadow: none !important;
-      box-shadow: none !important;
-    }
+    .high-contrast-mode * { text-shadow: none !important; box-shadow: none !important; }
   </style>
+
+  <script>
+    window.addEventListener('error', function(event) {
+      var root = document.getElementById('root');
+      if(root) {
+        root.innerHTML = '<div style="padding: 30px; color: white; background: #7f1d1d; min-height: 100vh; font-family: sans-serif;">' +
+          '<h2 style="font-weight: bold; font-size: 24px; margin-bottom: 10px;">App konnte nicht starten 🚨</h2>' +
+          '<p style="font-size: 16px; margin-bottom: 20px;">' + event.message + '</p>' +
+          '<div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px;">' +
+          '<p style="font-size: 14px; margin-bottom: 10px;"><b>Häufige Ursache:</b> Hast du beim Eintragen der JSONBin ID oder des Keys versehentlich die Anführungszeichen gelöscht?</p>' +
+          '<p style="font-size: 14px; font-family: monospace; color: #a5b4fc;">Richtig:<br>const JSONBIN_BIN_ID = \'deine-id\';</p>' +
+          '<p style="font-size: 14px; font-family: monospace; color: #fca5a5; margin-top: 5px;">Falsch (verursacht weißen Screen):<br>const JSONBIN_BIN_ID = deine-id;</p>' +
+          '</div></div>';
+      }
+    });
+  </script>
 </head>
 <body class="bg-slate-900 text-white antialiased">
   <div id="root">
-    <!-- Fallback Text, solange React lädt -->
-    <div style="display: flex; justify-content: center; align-items: center; height: 100vh; color: white; font-family: sans-serif;">
-      Lade London Trip...
+    <div style="display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; color: white; font-family: sans-serif;">
+      <div style="width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+      <p style="font-weight: bold; tracking: 1px;">Lade London Trip...</p>
+      <p style="font-size: 12px; opacity: 0.5; margin-top: 10px;">Wenn dies länger als 5 Sekunden dauert, blockiert dein Browser die Skripte.</p>
+      <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
     </div>
   </div>
 
-  <script type="text/babel">
+  <script type="text/babel" data-type="module">
     const { useState, useMemo, useEffect, useRef } = React;
-    const { 
-      Check, RefreshCw, MapPin, Clock, CreditCard, AlertCircle, 
-      Info, CalendarDays, ExternalLink, Ticket, Map, Sun, Moon, 
-      ShieldCheck, ArrowRight, Euro, PoundSterling, Activity,
-      Navigation, Cloud, Edit3, Save, X, Settings, PlusCircle
-    } = window.lucideReact;
+    
+    // ==========================================
+    // ⚙️ INLINE SVG ICONS (100% Adblocker-Sicher)
+    // ==========================================
+    const SvgIcon = ({ name, size = 24, className = "", color = "currentColor", strokeWidth = 2, ...props }) => {
+      const icons = {
+        Activity: <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />,
+        ArrowRight: <><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></>,
+        CalendarDays: <><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /><path d="M8 14h.01" /><path d="M12 14h.01" /><path d="M16 14h.01" /><path d="M8 18h.01" /><path d="M12 18h.01" /><path d="M16 18h.01" /></>,
+        Check: <polyline points="20 6 9 17 4 12" />,
+        Clock: <><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></>,
+        Cloud: <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />,
+        CreditCard: <><rect x="1" y="4" width="22" height="16" rx="2" ry="2" /><line x1="1" y1="10" x2="23" y2="10" /></>,
+        Edit3: <><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></>,
+        ExternalLink: <><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" /></>,
+        Info: <><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></>,
+        Map: <><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" /><line x1="9" y1="3" x2="9" y2="18" /><line x1="15" y1="6" x2="15" y2="21" /></>,
+        MapPin: <><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></>,
+        Moon: <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />,
+        Navigation: <polygon points="3 11 22 2 13 21 11 13 3 11" />,
+        PlusCircle: <><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></>,
+        RefreshCw: <><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></>,
+        Save: <><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" /></>,
+        ShieldCheck: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><polyline points="9 12 11 14 15 10" /></>,
+        Sun: <><circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" /></>,
+        Ticket: <><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" /><path d="M13 5v2" /><path d="M13 11v2" /><path d="M13 17v2" /></>,
+        X: <><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></>
+      };
 
-    // --- JSONBIN CONFIGURATION ---
+      if (!icons[name]) return <span style={{fontSize: '10px'}}>❖</span>;
+
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+          {icons[name]}
+        </svg>
+      );
+    };
+
+    const renderIcon = (name, props) => <SvgIcon name={name} {...props} />;
+
+    // ==========================================
+    // ⚙️ DEINE JSONBIN DATEN HIER EINTRAGEN
+    // ACHTUNG: Die ' ' Anführungszeichen MÜSSEN stehen bleiben!
+    // ==========================================
     const JSONBIN_BIN_ID = '6ac62760ffd5d1605355a6fc';
     const JSONBIN_API_KEY = '$2a$10$wRRd3MBLjIYLxJ/WR6PV/uLAJ3SQgFHItid6Fn.UDL7RmP.cceTrG';
 
-    // --- REISE-DATEN ---
+
     const initialItineraryData = [
       {
         id: 'day1',
@@ -151,6 +199,19 @@
       }
     ];
 
+    const loadSafeStorage = (key, fallback) => {
+      try {
+        const item = localStorage.getItem(key);
+        if (item && item !== 'undefined' && item !== 'null') {
+          return JSON.parse(item);
+        }
+      } catch (e) {
+        console.warn(`Storage Error bei ${key}, setze auf Standard zurück.`);
+        localStorage.removeItem(key);
+      }
+      return fallback;
+    };
+
     const triggerHaptic = (pattern = 50) => {
       if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(pattern);
     };
@@ -167,13 +228,12 @@
     };
 
     function LondonReiseplanerPro() {
-      const [activeSelections, setActiveSelections] = useState({});
-      const [completedItems, setCompletedItems] = useState({});
-      const [ticketsSecured, setTicketsSecured] = useState({});
-      
-      const [tripData, setTripData] = useState(initialItineraryData);
-      const [budgetLimit, setBudgetLimit] = useState(500);
-      const [extraExpenses, setExtraExpenses] = useState(0);
+      const [activeSelections, setActiveSelections] = useState(() => loadSafeStorage('london_activeSelections', {}));
+      const [completedItems, setCompletedItems] = useState(() => loadSafeStorage('london_completedItems', {}));
+      const [ticketsSecured, setTicketsSecured] = useState(() => loadSafeStorage('london_ticketsSecured', {}));
+      const [tripData, setTripData] = useState(() => loadSafeStorage('london_tripData', initialItineraryData));
+      const [budgetLimit, setBudgetLimit] = useState(() => loadSafeStorage('london_budgetLimit', 500));
+      const [extraExpenses, setExtraExpenses] = useState(() => loadSafeStorage('london_extraExpenses', 0));
       
       const [isEditMode, setIsEditMode] = useState(false);
       const [editingItem, setEditingItem] = useState(null);
@@ -190,26 +250,6 @@
       const EUR_RATE = 1.18;
       const dayRefs = useRef([]);
 
-      // LocalStorage Laden
-      useEffect(() => {
-        try {
-          const savedActive = localStorage.getItem('london_activeSelections');
-          const savedCompleted = localStorage.getItem('london_completedItems');
-          const savedTickets = localStorage.getItem('london_ticketsSecured');
-          const savedTripData = localStorage.getItem('london_tripData');
-          const savedBudget = localStorage.getItem('london_budgetLimit');
-          const savedExtra = localStorage.getItem('london_extraExpenses');
-          
-          if(savedActive) setActiveSelections(JSON.parse(savedActive));
-          if(savedCompleted) setCompletedItems(JSON.parse(savedCompleted));
-          if(savedTickets) setTicketsSecured(JSON.parse(savedTickets));
-          if(savedTripData) setTripData(JSON.parse(savedTripData));
-          if(savedBudget) setBudgetLimit(JSON.parse(savedBudget));
-          if(savedExtra) setExtraExpenses(JSON.parse(savedExtra));
-        } catch(e) { console.error("LocalStorage Error", e); }
-      }, []);
-
-      // LocalStorage Speichern
       useEffect(() => {
         localStorage.setItem('london_activeSelections', JSON.stringify(activeSelections));
         localStorage.setItem('london_completedItems', JSON.stringify(completedItems));
@@ -219,16 +259,15 @@
         localStorage.setItem('london_extraExpenses', JSON.stringify(extraExpenses));
       }, [activeSelections, completedItems, ticketsSecured, tripData, budgetLimit, extraExpenses]);
 
-      // Cloud Sync JSONBin
       const syncToCloud = async () => {
-        if(JSONBIN_BIN_ID === 'DEINE_BIN_ID_HIER') {
-          alert('⚠️ Bitte trage deine JSONBin ID und API Key oben im Code ein, um die Cloud zu nutzen.');
+        if(JSONBIN_BIN_ID === 'DEINE_BIN_ID_HIER' || !JSONBIN_BIN_ID) {
+          alert('⚠️ Bitte trage deine JSONBin ID und API Key im Code ein.');
           return;
         }
         setIsSyncing(true);
         triggerHaptic(50);
         try {
-          await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+          const response = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
@@ -236,11 +275,12 @@
             },
             body: JSON.stringify({ activeSelections, completedItems, ticketsSecured, tripData, budgetLimit, extraExpenses })
           });
+          if (!response.ok) throw new Error('Netzwerk-Antwort war nicht ok');
           triggerHaptic([30, 50, 30]);
           alert('✅ Fortschritt erfolgreich in der Cloud gespeichert!');
         } catch(error) {
           console.error('Sync Error:', error);
-          alert('❌ Fehler beim Speichern in der Cloud.');
+          alert('❌ Fehler beim Speichern in der Cloud. Sind ID und Key korrekt?');
         } finally {
           setIsSyncing(false);
         }
@@ -364,34 +404,30 @@
 
           <div className="max-w-3xl mx-auto px-4 pt-8 relative z-10">
             
-            {/* Header */}
             <header className="mb-8 flex flex-col items-center">
               <div className="w-full flex justify-between items-start mb-4">
                 <button 
                   onClick={() => { triggerHaptic(); setIsHighContrast(!isHighContrast); }}
                   className={`p-3 rounded-full flex items-center justify-center transition-all ${isHighContrast ? 'bg-black text-white' : 'bg-white/40 backdrop-blur-md border border-white/60 text-slate-700'}`}
-                  title="Outdoor Modus (High Contrast)"
                 >
-                  {isHighContrast ? <Sun size={20} /> : <Activity size={20} />}
+                  {isHighContrast ? renderIcon('Sun', {size: 20}) : renderIcon('Activity', {size: 20})}
                 </button>
                 <div className={`inline-flex flex-col items-center justify-center p-3 rounded-2xl ${isHighContrast ? 'border-2 border-black bg-white' : 'bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg'}`}>
-                  <MapPin className="text-blue-600 w-8 h-8" />
+                  {renderIcon('MapPin', {className: "text-blue-600 w-8 h-8"})}
                 </div>
                 <div className="flex gap-2">
                   <button 
                     onClick={syncToCloud}
                     disabled={isSyncing}
                     className={`p-3 rounded-full flex items-center justify-center transition-all ${isHighContrast ? 'hidden' : 'bg-white/40 backdrop-blur-md border border-white/60 text-slate-700'}`}
-                    title="Cloud Sync (JSONBin)"
                   >
-                    {isSyncing ? <RefreshCw size={20} className="animate-spin" /> : <Cloud size={20} />}
+                    {isSyncing ? renderIcon('RefreshCw', {size: 20, className: "animate-spin"}) : renderIcon('Cloud', {size: 20})}
                   </button>
                   <button 
                     onClick={() => { triggerHaptic(); setCurrentTheme(currentTheme === 'day' ? 'night' : 'day'); }}
                     className={`p-3 rounded-full flex items-center justify-center transition-all ${isHighContrast ? 'hidden' : 'bg-white/40 backdrop-blur-md border border-white/60 text-slate-700'}`}
-                    title="Theme umschalten"
                   >
-                    {currentTheme === 'day' ? <Moon size={20} /> : <Sun size={20} color="white" />}
+                    {currentTheme === 'day' ? renderIcon('Moon', {size: 20}) : renderIcon('Sun', {size: 20, color: "white"})}
                   </button>
                 </div>
               </div>
@@ -423,7 +459,7 @@
                   
                   <div className="sticky top-4 z-30 mb-6">
                     <div className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl backdrop-blur-xl shadow-sm ${isHighContrast ? 'bg-white border-2 border-black' : (currentTheme === 'day' ? 'bg-white/80 border border-white/80' : 'bg-slate-800/80 border border-white/20')}`}>
-                      <CalendarDays className={`w-5 h-5 ${isHighContrast ? 'text-black' : 'text-blue-600'}`} />
+                      {renderIcon('CalendarDays', {className: `w-5 h-5 ${isHighContrast ? 'text-black' : 'text-blue-600'}`})}
                       <h2 className={`text-xl font-bold ${textPrimary}`}>{day.title}</h2>
                     </div>
                   </div>
@@ -444,7 +480,7 @@
                             
                             <div className="md:w-24 flex-shrink-0 flex md:flex-col items-center md:items-end gap-2 md:pt-4 md:border-r-2 border-slate-300/50 md:pr-6">
                               <span className={`text-sm font-bold flex items-center gap-1 ${isHighContrast ? 'text-black' : 'text-blue-600'}`}>
-                                <Clock size={14} /> {block.time}
+                                {renderIcon('Clock', {size: 14})} {block.time}
                               </span>
                               <span className={`text-xs font-semibold uppercase tracking-wider ${textSecondary}`}>{block.label}</span>
                             </div>
@@ -475,7 +511,7 @@
                                           onClick={(e) => { e.stopPropagation(); setEditingItem({ dayId: day.id, blockId: block.id, optionId: primary.id, data: { ...primary } }); }}
                                           className="w-10 h-10 rounded-full bg-amber-500 border-2 border-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
                                         >
-                                          <Edit3 size={18} className="text-white" />
+                                          {renderIcon('Edit3', {size: 18, className: "text-white"})}
                                         </button>
                                       ) : isRoutingMode ? (
                                         <div className={`w-8 h-8 rounded-full border-2 transition-all duration-300 flex items-center justify-center font-bold shadow-inner ${
@@ -491,7 +527,7 @@
                                             ? 'bg-blue-600 border-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.4)]' 
                                             : 'bg-white/80 border-gray-400'
                                         }`}>
-                                          <Check size={18} className={`text-white transition-transform duration-300 ${isCompleted ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`} strokeWidth={3} />
+                                          {renderIcon('Check', {size: 18, className: `text-white transition-transform duration-300 ${isCompleted ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`, strokeWidth: 3})}
                                         </div>
                                       )}
                                     </div>
@@ -504,7 +540,7 @@
                                           {primary.title}
                                           {primary.halal && (
                                             <span className="inline-flex items-center justify-center bg-green-100 text-green-700 rounded-full p-1" title="Halal / Muslim-friendly">
-                                              <ShieldCheck size={16} />
+                                              {renderIcon('ShieldCheck', {size: 16})}
                                             </span>
                                           )}
                                         </h3>
@@ -518,7 +554,7 @@
                                           onClick={(e) => openMaps(e, primary.mapsQuery)}
                                           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${isHighContrast ? 'bg-black text-white' : 'bg-blue-600/10 text-blue-700 hover:bg-blue-600/20'}`}
                                         >
-                                          <Map size={14} /> Maps Route
+                                          {renderIcon('Map', {size: 14})} Maps Route
                                         </button>
                                         
                                         {primary.bookingLink && (
@@ -526,7 +562,7 @@
                                            onClick={(e) => openBooking(e, primary.bookingLink)}
                                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${isHighContrast ? 'border border-black text-black' : 'bg-white/50 border border-slate-200 text-slate-700 hover:bg-white'}`}
                                          >
-                                           <ExternalLink size={14} /> Offizielle Seite
+                                           {renderIcon('ExternalLink', {size: 14})} Offizielle Seite
                                          </button>
                                         )}
                                       </div>
@@ -542,7 +578,7 @@
                                           : 'bg-slate-500/10 border-slate-500/20 text-slate-600'
                                         )
                                       }`}>
-                                        {primary.requiresTicket ? (hasTicket ? <Check size={14} /> : <Ticket size={14} />) : <Info size={14} />}
+                                        {primary.requiresTicket ? (hasTicket ? renderIcon('Check', {size: 14}) : renderIcon('Ticket', {size: 14})) : renderIcon('Info', {size: 14})}
                                         {primary.requiresTicket ? (hasTicket ? 'Ticket vorhanden ✅' : primary.hint) : primary.hint}
                                       </span>
                                     </div>
@@ -555,7 +591,7 @@
                               {!isCompleted && (
                                 <div className="flex justify-center -my-3 relative z-10">
                                   <div className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 ${isHighContrast ? 'bg-white border border-black' : 'bg-slate-200/80 backdrop-blur-md border border-white/50 text-slate-500'}`}>
-                                    <RefreshCw size={10} /> Alternative
+                                    {renderIcon('RefreshCw', {size: 10})} Alternative
                                   </div>
                                 </div>
                               )}
@@ -575,7 +611,7 @@
                                            onClick={(e) => { e.stopPropagation(); setEditingItem({ dayId: day.id, blockId: block.id, optionId: alternative.id, data: { ...alternative } }); }}
                                            className="absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity hover:bg-black/60 z-10"
                                          >
-                                           <Edit3 size={16} className="text-white" />
+                                           {renderIcon('Edit3', {size: 16, className: "text-white"})}
                                          </button>
                                       )}
                                    </div>
@@ -591,7 +627,7 @@
                                       onClick={(e) => handleSwap(e, block.id)}
                                       className={`flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl transition-all flex-shrink-0 ${isHighContrast ? 'bg-black text-white' : 'bg-blue-600 text-white shadow-md hover:shadow-lg hover:bg-blue-700'}`}
                                     >
-                                      <RefreshCw size={14} />
+                                      {renderIcon('RefreshCw', {size: 14})}
                                       <span className="hidden sm:inline">Als Primär</span>
                                     </button>
                                     {isEditMode && (
@@ -599,7 +635,7 @@
                                            onClick={(e) => { e.stopPropagation(); setEditingItem({ dayId: day.id, blockId: block.id, optionId: alternative.id, data: { ...alternative } }); }}
                                            className="ml-2 p-2 rounded-xl bg-amber-500 text-white shadow-md block sm:hidden relative z-10"
                                          >
-                                           <Edit3 size={14} />
+                                           {renderIcon('Edit3', {size: 14})}
                                          </button>
                                     )}
                                 </div>
@@ -613,7 +649,7 @@
                                 <div className="absolute left-6 md:left-[10px] top-0 bottom-0 w-px border-l-2 border-dotted border-slate-300 dark:border-slate-600 hidden md:block"></div>
                                 
                                 <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold ${isHighContrast ? 'text-gray-600' : 'bg-white/40 backdrop-blur-sm border border-white/30 text-slate-500'}`}>
-                                   <ArrowRight size={12} /> {block.travelToNext}
+                                   {renderIcon('ArrowRight', {size: 12})} {block.travelToNext}
                                 </div>
                              </div>
                           )}
@@ -642,7 +678,7 @@
                         : (isHighContrast ? 'bg-white border-2 border-black text-black' : 'bg-white/50 border border-white/60 text-slate-700 hover:bg-white/80')
                     }`}
                   >
-                    <Navigation size={20} />
+                    {renderIcon('Navigation', {size: 20})}
                     {isRoutingMode ? 'Routen-Modus beenden' : 'Maps Routenplaner'}
                   </button>
 
@@ -659,7 +695,7 @@
                         : (isHighContrast ? 'bg-white border-2 border-black text-black' : 'bg-white/50 border border-white/60 text-slate-700 hover:bg-white/80')
                     }`}
                   >
-                    <Edit3 size={20} />
+                    {renderIcon('Edit3', {size: 20})}
                     {isEditMode ? 'Bearbeiten beenden' : 'Trip-Daten anpassen'}
                   </button>
                 </div>
@@ -692,15 +728,14 @@
                 <div className="flex flex-col">
                   <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${textSecondary}`}>
                     Bisher ausgegeben 
-                    <button onClick={() => setIsEditingBudget(true)} className="p-1 hover:bg-black/10 rounded-full transition-colors"><Edit3 size={10}/></button>
+                    <button onClick={() => setIsEditingBudget(true)} className="p-1 hover:bg-black/10 rounded-full transition-colors">{renderIcon('Edit3', {size: 10})}</button>
                   </span>
                   <div className="flex items-center gap-2 mt-1">
                     <button 
                       onClick={() => { triggerHaptic(); setIsEuro(!isEuro); }}
                       className={`flex items-center justify-center p-1.5 rounded-lg transition-colors ${isHighContrast ? 'border border-black' : 'bg-slate-100 hover:bg-slate-200'}`}
-                      title="Währung wechseln"
                     >
-                      <RefreshCw size={14} className={textSecondary} />
+                      {renderIcon('RefreshCw', {size: 14, className: textSecondary})}
                     </button>
                     <span className={`text-2xl font-black ${isHighContrast ? 'text-black' : 'text-slate-800'}`}>
                       {isEuro ? `€${stats.totalEuro}` : `£${stats.totalPound}`}
@@ -743,42 +778,27 @@
               <div className={`w-full max-w-sm p-6 rounded-3xl shadow-2xl ${isHighContrast ? 'bg-white border-2 border-black' : 'bg-white/90 backdrop-blur-xl border border-white/50'}`}>
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-xl font-bold text-slate-800">Budget anpassen</h3>
-                  <button onClick={() => setIsEditingBudget(false)} className="p-2 bg-slate-100 rounded-full text-slate-600"><X size={20}/></button>
+                  <button onClick={() => setIsEditingBudget(false)} className="p-2 bg-slate-100 rounded-full text-slate-600">{renderIcon('X', {size: 20})}</button>
                 </div>
                 
                 <div className="space-y-5">
                   <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
                     <label className="block text-sm font-bold text-slate-700 flex items-center gap-2 mb-2">
-                      <CreditCard size={16} className="text-blue-600" />
+                      {renderIcon('CreditCard', {size: 16, className: "text-blue-600"})}
                       Maximales Budget (in £)
                     </label>
-                    <input 
-                      type="number" 
-                      value={budgetLimit} 
-                      onChange={(e) => setBudgetLimit(Number(e.target.value))}
-                      className="w-full px-4 py-3 rounded-xl border border-blue-200 bg-white text-lg font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <p className="text-xs text-slate-500 mt-2">Dient als dein Limit in der Fortschrittsanzeige.</p>
+                    <input type="number" value={budgetLimit} onChange={(e) => setBudgetLimit(Number(e.target.value))} className="w-full px-4 py-3 rounded-xl border border-blue-200 bg-white text-lg font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
 
                   <div className="bg-amber-50/50 p-4 rounded-2xl border border-amber-100">
                     <label className="block text-sm font-bold text-slate-700 flex items-center gap-2 mb-2">
-                      <PlusCircle size={16} className="text-amber-600" />
+                      {renderIcon('PlusCircle', {size: 16, className: "text-amber-600"})}
                       Zusätzliche Ausgaben (in £)
                     </label>
-                    <input 
-                      type="number" 
-                      value={extraExpenses} 
-                      onChange={(e) => setExtraExpenses(Number(e.target.value))}
-                      className="w-full px-4 py-3 rounded-xl border border-amber-200 bg-white text-lg font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    />
-                    <p className="text-xs text-slate-500 mt-2">Hier kannst du manuell Geld für Tube, Shopping, Kaffee etc. eintragen. Das wird direkt aufgeschlagen.</p>
+                    <input type="number" value={extraExpenses} onChange={(e) => setExtraExpenses(Number(e.target.value))} className="w-full px-4 py-3 rounded-xl border border-amber-200 bg-white text-lg font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500" />
                   </div>
 
-                  <button 
-                    onClick={() => { setIsEditingBudget(false); triggerHaptic(40); }}
-                    className="w-full py-3.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg mt-2"
-                  >
+                  <button onClick={() => { setIsEditingBudget(false); triggerHaptic(40); }} className="w-full py-3.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg mt-2">
                     Speichern
                   </button>
                 </div>
@@ -791,85 +811,38 @@
               <div className={`w-full max-w-md p-6 rounded-3xl shadow-2xl overflow-y-auto max-h-[90vh] ${isHighContrast ? 'bg-white border-2 border-black' : 'bg-white/95 backdrop-blur-xl border border-white/50'}`}>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-xl font-bold text-slate-800">Aktivität bearbeiten</h3>
-                  <button onClick={() => setEditingItem(null)} className="p-2 bg-slate-100 rounded-full text-slate-600"><X size={20}/></button>
+                  <button onClick={() => setEditingItem(null)} className="p-2 bg-slate-100 rounded-full text-slate-600">{renderIcon('X', {size: 20})}</button>
                 </div>
                 
                 <div className="space-y-4 text-left">
                   <div>
                     <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Titel</label>
-                    <input 
-                      type="text" 
-                      value={editingItem.data.title} 
-                      onChange={(e) => setEditingItem({ ...editingItem, data: { ...editingItem.data, title: e.target.value }})}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                    <input type="text" value={editingItem.data.title} onChange={(e) => setEditingItem({ ...editingItem, data: { ...editingItem.data, title: e.target.value }})} className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   
                   <div className="flex gap-4">
                     <div className="flex-1">
                       <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Preis (£)</label>
-                      <input 
-                        type="number" 
-                        value={editingItem.data.price} 
-                        onChange={(e) => setEditingItem({ ...editingItem, data: { ...editingItem.data, price: Number(e.target.value) }})}
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
+                      <input type="number" value={editingItem.data.price} onChange={(e) => setEditingItem({ ...editingItem, data: { ...editingItem.data, price: Number(e.target.value) }})} className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500" />
                     </div>
                     <div className="flex-1 flex items-center gap-2 mt-5">
-                      <input 
-                        type="checkbox" 
-                        id="halal-edit"
-                        checked={editingItem.data.halal} 
-                        onChange={(e) => setEditingItem({ ...editingItem, data: { ...editingItem.data, halal: e.target.checked }})}
-                        className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500"
-                      />
+                      <input type="checkbox" id="halal-edit" checked={editingItem.data.halal} onChange={(e) => setEditingItem({ ...editingItem, data: { ...editingItem.data, halal: e.target.checked }})} className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500" />
                       <label htmlFor="halal-edit" className="text-sm font-bold text-slate-700 flex items-center gap-1">
-                        Halal <ShieldCheck size={16} className="text-green-600"/>
+                        Halal {renderIcon('ShieldCheck', {size: 16, className: "text-green-600"})}
                       </label>
                     </div>
                   </div>
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Hinweis (Badge)</label>
-                    <input 
-                      type="text" 
-                      value={editingItem.data.hint} 
-                      onChange={(e) => setEditingItem({ ...editingItem, data: { ...editingItem.data, hint: e.target.value }})}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                    <input type="text" value={editingItem.data.hint} onChange={(e) => setEditingItem({ ...editingItem, data: { ...editingItem.data, hint: e.target.value }})} className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <input 
-                      type="checkbox" 
-                      id="ticket-edit"
-                      checked={editingItem.data.requiresTicket} 
-                      onChange={(e) => setEditingItem({ ...editingItem, data: { ...editingItem.data, requiresTicket: e.target.checked }})}
-                      className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500"
-                    />
+                    <input type="checkbox" id="ticket-edit" checked={editingItem.data.requiresTicket} onChange={(e) => setEditingItem({ ...editingItem, data: { ...editingItem.data, requiresTicket: e.target.checked }})} className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500" />
                     <label htmlFor="ticket-edit" className="text-sm font-bold text-slate-700">Ticket / Reservierung erforderlich?</label>
                   </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Maps Suchbegriff</label>
-                    <input 
-                      type="text" 
-                      value={editingItem.data.mapsQuery} 
-                      onChange={(e) => setEditingItem({ ...editingItem, data: { ...editingItem.data, mapsQuery: e.target.value }})}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 text-slate-700 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
                   
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Bild URL</label>
-                    <input 
-                      type="text" 
-                      value={editingItem.data.image} 
-                      onChange={(e) => setEditingItem({ ...editingItem, data: { ...editingItem.data, image: e.target.value }})}
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 text-slate-700 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
                   <button 
                     onClick={() => {
                       setTripData(prev => prev.map(day => {
@@ -878,22 +851,15 @@
                           ...day,
                           blocks: day.blocks.map(block => {
                             if (block.id !== editingItem.blockId) return block;
-                            return {
-                              ...block,
-                              options: block.options.map(opt => {
-                                if (opt.id !== editingItem.optionId) return opt;
-                                return { ...opt, ...editingItem.data };
-                              })
-                            }
+                            return { ...block, options: block.options.map(opt => opt.id === editingItem.optionId ? { ...opt, ...editingItem.data } : opt) }
                           })
                         }
                       }));
-                      setEditingItem(null);
-                      triggerHaptic(50);
+                      setEditingItem(null); triggerHaptic(50);
                     }}
-                    className="w-full mt-4 py-3 bg-blue-600 text-white rounded-xl font-bold flex justify-center items-center gap-2 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/30"
+                    className="w-full mt-4 py-3 bg-blue-600 text-white rounded-xl font-bold flex justify-center items-center gap-2 hover:bg-blue-700 transition-colors shadow-lg"
                   >
-                    <Save size={18} /> Änderungen Speichern
+                    {renderIcon('Save', {size: 18})} Änderungen Speichern
                   </button>
                 </div>
               </div>
