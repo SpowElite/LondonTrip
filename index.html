@@ -1,0 +1,1026 @@
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { 
+  Check, RefreshCw, MapPin, Clock, CreditCard, AlertCircle, 
+  Info, CalendarDays, ExternalLink, Ticket, Map, Sun, Moon, 
+  ShieldCheck, ArrowRight, Euro, PoundSterling, Activity,
+  Navigation, Cloud, Edit3, Save, X, Settings, PlusCircle
+} from 'lucide-react';
+
+// --- JSONBIN CONFIGURATION ---
+// HIER: Deine JSONBin Master-Key und Bin-ID eintragen für Cloud-Sync!
+const JSONBIN_BIN_ID = 'DEINE_BIN_ID_HIER';
+const JSONBIN_API_KEY = 'DEIN_API_KEY_HIER';
+
+// Reale Reisedaten mit spezifischen Bildern, Maps-Queries, Halal-Status und Ticket-Infos
+const initialItineraryData = [
+  {
+    id: 'day1',
+    title: 'Tag 1 (Freitag)',
+    date: 'Friday',
+    blocks: [
+      {
+        id: 'd1-b1', time: '10:00', label: 'Vormittag',
+        travelToNext: '15 Min. (Tube)',
+        options: [
+          { 
+            id: 'o-hor22', title: 'Horizon 22 (Aussicht)', price: 0, 
+            hint: 'Gratis-Ticket zwingend vorab buchen!', requiresTicket: true, bookingLink: 'https://horizon22.co.uk',
+            mapsQuery: 'Horizon+22+London', halal: false,
+            image: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=600&q=80' 
+          },
+          { 
+            id: 'o-skygar', title: 'Sky Garden', price: 0, 
+            hint: 'Gratis-Ticket vorab buchen!', requiresTicket: true, bookingLink: 'https://skygarden.london',
+            mapsQuery: 'Sky+Garden+London', halal: false,
+            image: 'https://images.unsplash.com/photo-1529655683823-dc1122014831?w=600&q=80' 
+          }
+        ]
+      },
+      {
+        id: 'd1-b2', time: '11:30', label: 'Später Vormittag',
+        travelToNext: '20 Min. (Walk)',
+        options: [
+          { 
+            id: 'o-tower', title: 'Tower of London & Bridge', price: 33, 
+            hint: 'Ticket erforderlich', requiresTicket: true, bookingLink: 'https://hrp.org.uk',
+            mapsQuery: 'Tower+of+London', halal: false,
+            image: 'https://images.unsplash.com/photo-1520986606214-8b456906c813?w=600&q=80' 
+          },
+          { 
+            id: 'o-stpaul', title: "St. Paul's Cathedral", price: 23, 
+            hint: 'Ticket erforderlich', requiresTicket: true, bookingLink: 'https://stpauls.co.uk',
+            mapsQuery: 'St+Pauls+Cathedral+London', halal: false,
+            image: 'https://images.unsplash.com/photo-1549429738-348bd2187f55?w=600&q=80' 
+          }
+        ]
+      },
+      {
+        id: 'd1-b3', time: '13:00', label: 'Mittagessen',
+        travelToNext: '15 Min. (Walk)',
+        options: [
+          { 
+            id: 'o-borough', title: 'Borough Market (Streetfood)', price: 15, 
+            hint: 'Walk-in, keine Reservierung', requiresTicket: false,
+            mapsQuery: 'Borough+Market+London', halal: false,
+            image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&q=80' 
+          },
+          { 
+            id: 'o-needoo', title: 'Needoo Grill (Halal)', price: 20, 
+            hint: 'Reservierung empfohlen', requiresTicket: true,
+            mapsQuery: 'Needoo+Grill+London', halal: true,
+            image: 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=600&q=80' 
+          }
+        ]
+      },
+      {
+        id: 'd1-b4', time: '15:00', label: 'Nachmittag',
+        travelToNext: '25 Min. (Tube)',
+        options: [
+          { 
+            id: 'o-southbank', title: 'London Bridge & South Bank', price: 0, 
+            hint: 'Walk-in', requiresTicket: false,
+            mapsQuery: 'South+Bank+London', halal: false,
+            image: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=600&q=80' // Bild repariert
+          },
+          { 
+            id: 'o-tate', title: 'Tate Modern Art Gallery', price: 0, 
+            hint: 'Kostenlos, Walk-in', requiresTicket: false,
+            mapsQuery: 'Tate+Modern+London', halal: false,
+            image: 'https://images.unsplash.com/photo-1564399579883-451a5d44ec08?w=600&q=80' 
+          }
+        ]
+      },
+      {
+        id: 'd1-b5', time: '20:00', label: 'Abendessen',
+        travelToNext: 'Hotel',
+        options: [
+          { 
+            id: 'o-burnt', title: 'Burnt Smokehouse (Halal BBQ)', price: 40, 
+            hint: 'Reservierung zwingend!', requiresTicket: true,
+            mapsQuery: 'Burnt+Smokehouse+London', halal: true,
+            image: 'https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&q=80' 
+          },
+          { 
+            id: 'o-billys', title: "Billy's SmokeHouse (Halal)", price: 35, 
+            hint: 'Reservierung empfohlen', requiresTicket: true,
+            mapsQuery: 'Billys+SmokeHouse+London', halal: true,
+            image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600&q=80' 
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'day2',
+    title: 'Tag 2 (Samstag)',
+    date: 'Saturday',
+    blocks: [
+      {
+        id: 'd2-b1', time: '10:00', label: 'Vormittag',
+        travelToNext: '45 Min. (Train/Tube)',
+        options: [
+          { 
+            id: 'o-hp', title: 'Warner Bros. Studio (Harry Potter)', price: 53, 
+            hint: 'Tickets Monate im Voraus buchen!', requiresTicket: true, bookingLink: 'https://wbstudiotour.co.uk',
+            mapsQuery: 'Warner+Bros+Studio+Tour+London', halal: false,
+            image: 'https://images.unsplash.com/photo-1618944847023-38aa001235f0?w=600&q=80' 
+          },
+          { 
+            id: 'o-crown', title: 'Sightseeing City (Kronjuwelen)', price: 0, 
+            hint: 'Walk-in', requiresTicket: false,
+            mapsQuery: 'Crown+Jewels+Tower+of+London', halal: false,
+            image: 'https://images.unsplash.com/photo-1588523315714-f58c706ff719?w=600&q=80' 
+          }
+        ]
+      },
+      {
+        id: 'd2-b2', time: '14:30', label: 'Mittagessen',
+        travelToNext: '10 Min. (Walk)',
+        options: [
+          { 
+            id: 'o-burgeri', title: 'Burgeri Soho (Halal)', price: 18, 
+            hint: 'Walk-in', requiresTicket: false,
+            mapsQuery: 'Burgeri+Soho+London', halal: true,
+            image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&q=80' 
+          },
+          { 
+            id: 'o-honest', title: 'Honest Burgers Soho', price: 16, 
+            hint: 'Walk-in', requiresTicket: false,
+            mapsQuery: 'Honest+Burgers+Soho+London', halal: false,
+            image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&q=80' 
+          }
+        ]
+      },
+      {
+        id: 'd2-b3', time: '16:00', label: 'Nachmittag',
+        travelToNext: '20 Min. (Tube)',
+        options: [
+          { 
+            id: 'o-picca', title: 'Piccadilly, Trafalgar & Covent Garden', price: 0, 
+            hint: 'Walk-in', requiresTicket: false,
+            mapsQuery: 'Piccadilly+Circus+London', halal: false,
+            image: 'https://images.unsplash.com/photo-1502814886826-646e7f1e78bb?w=600&q=80' 
+          },
+          { 
+            id: 'o-china', title: 'Chinatown Erkundung', price: 0, 
+            hint: 'Walk-in', requiresTicket: false,
+            mapsQuery: 'Chinatown+London', halal: false,
+            image: 'https://images.unsplash.com/photo-1563725515320-c9f37cba87ab?w=600&q=80' 
+          }
+        ]
+      },
+      {
+        id: 'd2-b4', time: '20:00', label: 'Abendessen',
+        travelToNext: 'Hotel',
+        options: [
+          { 
+            id: 'o-poppies', title: 'Poppies Fish & Chips Soho', price: 22, 
+            hint: 'Reservierung empfohlen', requiresTicket: true,
+            mapsQuery: 'Poppies+Fish+and+Chips+Soho', halal: false,
+            image: 'https://images.unsplash.com/photo-1579208031537-4c4f9a0cbaaa?w=600&q=80' 
+          },
+          { 
+            id: 'o-golden', title: 'Golden Chippy Greenwich', price: 18, 
+            hint: 'Walk-in', requiresTicket: false,
+            mapsQuery: 'Golden+Chippy+Greenwich', halal: false,
+            image: 'https://images.unsplash.com/photo-1594220556201-9c0953a94825?w=600&q=80' 
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'day3',
+    title: 'Tag 3 (Sonntag)',
+    date: 'Sunday',
+    blocks: [
+      {
+        id: 'd3-b1', time: '10:00', label: 'Vormittag',
+        travelToNext: '15 Min. (Walk)',
+        options: [
+          { 
+            id: 'o-science', title: 'Science & Natural History Museum', price: 0, 
+            hint: 'Gratis-Ticket vorab reservieren!', requiresTicket: true, bookingLink: 'https://nhm.ac.uk',
+            mapsQuery: 'Natural+History+Museum+London', halal: false,
+            image: 'https://images.unsplash.com/photo-1518331647614-7a1f04cd34cb?w=600&q=80' 
+          },
+          { 
+            id: 'o-va', title: 'Victoria and Albert Museum', price: 0, 
+            hint: 'Gratis-Ticket vorab reservieren!', requiresTicket: true, bookingLink: 'https://vam.ac.uk',
+            mapsQuery: 'Victoria+and+Albert+Museum+London', halal: false,
+            image: 'https://images.unsplash.com/photo-1566125882500-87e10f726cdc?w=600&q=80' 
+          }
+        ]
+      },
+      {
+        id: 'd3-b2', time: '13:30', label: 'Mittagessen',
+        travelToNext: '20 Min. (Walk/Bus)',
+        options: [
+          { 
+            id: 'o-nandos', title: "Nando's Kensington (Halal)", price: 18, 
+            hint: 'Walk-in', requiresTicket: false,
+            mapsQuery: 'Nandos+Kensington+High+Street+London', halal: true,
+            image: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=600&q=80' 
+          },
+          { 
+            id: 'o-hyde', title: 'Hyde Park Picknick (Snacks)', price: 10, 
+            hint: 'Walk-in', requiresTicket: false,
+            mapsQuery: 'Hyde+Park+London', halal: false,
+            image: 'https://images.unsplash.com/photo-1501692881732-fc223e7386d3?w=600&q=80' 
+          }
+        ]
+      },
+      {
+        id: 'd3-b3', time: '15:30', label: 'Nachmittag',
+        travelToNext: 'Ende',
+        options: [
+          { 
+            id: 'o-buckingham', title: 'Buckingham Palace', price: 0, 
+            hint: 'Walk-in (Außenbesichtigung)', requiresTicket: false,
+            mapsQuery: 'Buckingham+Palace+London', halal: false,
+            image: 'https://images.unsplash.com/photo-1582299878235-51ecab58c9f5?w=600&q=80' 
+          },
+          { 
+            id: 'o-harrods', title: 'Harrods Luxuskaufhaus', price: 0, 
+            hint: 'Walk-in', requiresTicket: false,
+            mapsQuery: 'Harrods+London', halal: false,
+            image: 'https://images.unsplash.com/photo-1605333575990-0d3215fcf811?w=600&q=80' 
+          }
+        ]
+      }
+    ]
+  }
+];
+
+const triggerHaptic = (pattern = 50) => {
+  if (typeof navigator !== 'undefined' && navigator.vibrate) {
+    navigator.vibrate(pattern);
+  }
+};
+
+const openMaps = (e, query) => {
+  e.stopPropagation();
+  window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+};
+
+const openBooking = (e, link) => {
+  if(!link) return;
+  e.stopPropagation();
+  window.open(link, '_blank');
+};
+
+export default function LondonReiseplanerPro() {
+  const [activeSelections, setActiveSelections] = useState({});
+  const [completedItems, setCompletedItems] = useState({});
+  const [ticketsSecured, setTicketsSecured] = useState({});
+  
+  const [tripData, setTripData] = useState(initialItineraryData);
+  const [budgetLimit, setBudgetLimit] = useState(500);
+  const [extraExpenses, setExtraExpenses] = useState(0); // NEU: Manuelle Extra-Ausgaben
+  
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [isEditingBudget, setIsEditingBudget] = useState(false);
+
+  const [isRoutingMode, setIsRoutingMode] = useState(false);
+  const [routePoints, setRoutePoints] = useState([]);
+  const [isSyncing, setIsSyncing] = useState(false);
+  
+  const [isHighContrast, setIsHighContrast] = useState(false);
+  const [isEuro, setIsEuro] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState('day');
+  
+  const EUR_RATE = 1.18;
+  const dayRefs = useRef([]);
+
+  // LocalStorage Laden
+  useEffect(() => {
+    try {
+      const savedActive = localStorage.getItem('london_activeSelections');
+      const savedCompleted = localStorage.getItem('london_completedItems');
+      const savedTickets = localStorage.getItem('london_ticketsSecured');
+      const savedTripData = localStorage.getItem('london_tripData');
+      const savedBudget = localStorage.getItem('london_budgetLimit');
+      const savedExtra = localStorage.getItem('london_extraExpenses');
+      
+      if(savedActive) setActiveSelections(JSON.parse(savedActive));
+      if(savedCompleted) setCompletedItems(JSON.parse(savedCompleted));
+      if(savedTickets) setTicketsSecured(JSON.parse(savedTickets));
+      if(savedTripData) setTripData(JSON.parse(savedTripData));
+      if(savedBudget) setBudgetLimit(JSON.parse(savedBudget));
+      if(savedExtra) setExtraExpenses(JSON.parse(savedExtra));
+    } catch(e) { console.error("LocalStorage Error", e); }
+  }, []);
+
+  // LocalStorage Speichern
+  useEffect(() => {
+    localStorage.setItem('london_activeSelections', JSON.stringify(activeSelections));
+    localStorage.setItem('london_completedItems', JSON.stringify(completedItems));
+    localStorage.setItem('london_ticketsSecured', JSON.stringify(ticketsSecured));
+    localStorage.setItem('london_tripData', JSON.stringify(tripData));
+    localStorage.setItem('london_budgetLimit', JSON.stringify(budgetLimit));
+    localStorage.setItem('london_extraExpenses', JSON.stringify(extraExpenses));
+  }, [activeSelections, completedItems, ticketsSecured, tripData, budgetLimit, extraExpenses]);
+
+  // Cloud Sync JSONBin
+  const syncToCloud = async () => {
+    if(JSONBIN_BIN_ID === 'DEINE_BIN_ID_HIER') {
+      alert('⚠️ Bitte trage deine JSONBin ID und API Key oben im Code ein, um die Cloud zu nutzen.');
+      return;
+    }
+    setIsSyncing(true);
+    triggerHaptic(50);
+    try {
+      await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Master-Key': JSONBIN_API_KEY
+        },
+        body: JSON.stringify({ activeSelections, completedItems, ticketsSecured, tripData, budgetLimit, extraExpenses })
+      });
+      triggerHaptic([30, 50, 30]);
+      alert('✅ Fortschritt erfolgreich in der Cloud gespeichert!');
+    } catch(error) {
+      console.error('Sync Error:', error);
+      alert('❌ Fehler beim Speichern in der Cloud.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleRouteSelection = (option) => {
+    triggerHaptic(30);
+    setRoutePoints(prev => {
+      const isSelected = prev.find(p => p.id === option.id);
+      if (isSelected) {
+        return prev.filter(p => p.id !== option.id);
+      } else {
+        return [...prev, option];
+      }
+    });
+  };
+
+  const generateGoogleMapsRoute = () => {
+    if (routePoints.length === 0) return;
+    triggerHaptic(80);
+    
+    const origin = routePoints[0].mapsQuery;
+    const destination = routePoints[routePoints.length - 1].mapsQuery;
+    let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=walking`;
+    
+    if (routePoints.length > 2) {
+      const waypoints = routePoints.slice(1, -1).map(p => p.mapsQuery).join('|');
+      url += `&waypoints=${waypoints}`;
+    }
+    
+    window.open(url, '_blank');
+    setIsRoutingMode(false);
+    setRoutePoints([]);
+  };
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour < 6 || hour > 18) {
+      setCurrentTheme('night');
+    } else {
+      setCurrentTheme('day');
+    }
+  }, []);
+
+  const getActiveIndex = (blockId) => activeSelections[blockId] || 0;
+
+  const handleSwap = (e, blockId) => {
+    e.stopPropagation();
+    triggerHaptic([30, 50, 30]);
+    setActiveSelections(prev => ({
+      ...prev,
+      [blockId]: getActiveIndex(blockId) === 0 ? 1 : 0
+    }));
+  };
+
+  const handleToggleComplete = (blockId) => {
+    triggerHaptic(60);
+    setCompletedItems(prev => ({
+      ...prev,
+      [blockId]: !prev[blockId]
+    }));
+  };
+
+  const handleTicketToggle = (e, optionId) => {
+    e.stopPropagation();
+    triggerHaptic(40);
+    setTicketsSecured(prev => ({
+      ...prev,
+      [optionId]: !prev[optionId]
+    }));
+  };
+
+  // --- ANGEPASSTE LOGIK: Live Budget basiert auf ABGEHAKTEN Items + Extra Ausgaben ---
+  const stats = useMemo(() => {
+    let totalPound = Number(extraExpenses) || 0;
+    let totalItems = 0;
+    let completedCount = 0;
+
+    tripData.forEach(day => {
+      day.blocks.forEach(block => {
+        totalItems++;
+        const activeIdx = getActiveIndex(block.id);
+        const primaryOption = block.options[activeIdx];
+        
+        // Füge den Preis NUR hinzu, wenn das Item als "Erledigt" markiert ist
+        if (completedItems[block.id]) {
+          totalPound += Number(primaryOption.price) || 0;
+          completedCount++;
+        }
+      });
+    });
+
+    const totalEuro = (totalPound * EUR_RATE).toFixed(0);
+    const limitEuro = (budgetLimit * EUR_RATE).toFixed(0);
+    const progressPercent = totalItems === 0 ? 0 : Math.round((completedCount / totalItems) * 100);
+
+    return { totalPound, totalEuro, progressPercent, completedCount, totalItems, limitEuro };
+  }, [activeSelections, completedItems, tripData, budgetLimit, extraExpenses]);
+
+  const bgMain = isHighContrast 
+    ? "bg-white text-black" 
+    : (currentTheme === 'day' 
+        ? "bg-gradient-to-br from-slate-200 via-gray-100 to-blue-100 text-slate-800" 
+        : "bg-gradient-to-br from-slate-900 via-slate-800 to-blue-950 text-slate-100");
+
+  const glassCard = isHighContrast
+    ? "bg-white border-2 border-black shadow-none"
+    : (currentTheme === 'day'
+        ? "bg-white/70 backdrop-blur-xl border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
+        : "bg-slate-800/70 backdrop-blur-xl border border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.2)]");
+
+  const glassCardCompleted = isHighContrast
+    ? "bg-gray-200 border-2 border-gray-400 opacity-80"
+    : (currentTheme === 'day'
+        ? "bg-slate-100/40 backdrop-blur-md border border-white/30 opacity-70 grayscale-[30%]"
+        : "bg-slate-800/40 backdrop-blur-md border border-white/5 opacity-70 grayscale-[30%]");
+
+  const textPrimary = isHighContrast ? "text-black" : (currentTheme === 'day' ? "text-slate-900" : "text-white");
+  const textSecondary = isHighContrast ? "text-gray-700" : (currentTheme === 'day' ? "text-slate-500" : "text-slate-400");
+  
+  const blurDecorations = !isHighContrast && (
+    <>
+      <div className={`fixed top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full blur-3xl pointer-events-none mix-blend-multiply dark:mix-blend-screen transition-colors duration-1000 ${currentTheme === 'day' ? 'bg-blue-400/20' : 'bg-blue-600/20'}`}></div>
+      <div className={`fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full blur-3xl pointer-events-none mix-blend-multiply dark:mix-blend-screen transition-colors duration-1000 ${currentTheme === 'day' ? 'bg-red-400/10' : 'bg-red-600/10'}`}></div>
+    </>
+  );
+
+  return (
+    <div className={`min-h-screen font-sans transition-colors duration-500 selection:bg-blue-500/30 pb-40 ${bgMain} ${isHighContrast ? 'high-contrast-mode' : ''}`}>
+      
+      {blurDecorations}
+
+      <div className="max-w-3xl mx-auto px-4 pt-8 relative z-10">
+        
+        {/* Header */}
+        <header className="mb-8 flex flex-col items-center">
+          <div className="w-full flex justify-between items-start mb-4">
+            <button 
+              onClick={() => { triggerHaptic(); setIsHighContrast(!isHighContrast); }}
+              className={`p-3 rounded-full flex items-center justify-center transition-all ${isHighContrast ? 'bg-black text-white' : 'bg-white/40 backdrop-blur-md border border-white/60 text-slate-700'}`}
+              title="Outdoor Modus (High Contrast)"
+            >
+              {isHighContrast ? <Sun size={20} /> : <Activity size={20} />}
+            </button>
+            <div className={`inline-flex flex-col items-center justify-center p-3 rounded-2xl ${isHighContrast ? 'border-2 border-black bg-white' : 'bg-white/40 backdrop-blur-xl border border-white/60 shadow-lg'}`}>
+              <MapPin className="text-blue-600 w-8 h-8" />
+            </div>
+            <div className="flex gap-2">
+              <button 
+                onClick={syncToCloud}
+                disabled={isSyncing}
+                className={`p-3 rounded-full flex items-center justify-center transition-all ${isHighContrast ? 'hidden' : 'bg-white/40 backdrop-blur-md border border-white/60 text-slate-700'}`}
+                title="Cloud Sync (JSONBin)"
+              >
+                {isSyncing ? <RefreshCw size={20} className="animate-spin" /> : <Cloud size={20} />}
+              </button>
+              <button 
+                onClick={() => { triggerHaptic(); setCurrentTheme(currentTheme === 'day' ? 'night' : 'day'); }}
+                className={`p-3 rounded-full flex items-center justify-center transition-all ${isHighContrast ? 'hidden' : 'bg-white/40 backdrop-blur-md border border-white/60 text-slate-700'}`}
+                title="Theme umschalten"
+              >
+                {currentTheme === 'day' ? <Moon size={20} /> : <Sun size={20} color="white" />}
+              </button>
+            </div>
+          </div>
+          
+          <h1 className={`text-4xl md:text-5xl font-extrabold tracking-tight mb-0 text-center ${isHighContrast ? 'text-black' : 'text-transparent bg-clip-text bg-gradient-to-r from-slate-800 to-blue-800 dark:from-white dark:to-blue-300'}`}>
+            London Trip
+          </h1>
+          <p className={`text-sm font-bold tracking-widest uppercase mt-2 opacity-80 ${textSecondary}`}>
+            made by Ayoub
+          </p>
+          
+          {/* Progress Bar Header */}
+          <div className="w-full max-w-md mt-6">
+            <div className="flex justify-between text-xs font-bold uppercase tracking-wider mb-2">
+              <span className={textSecondary}>Trip Fortschritt</span>
+              <span className="text-blue-600">{stats.progressPercent}%</span>
+            </div>
+            <div className={`h-2.5 w-full rounded-full overflow-hidden ${isHighContrast ? 'bg-gray-300 border border-black' : 'bg-white/50 border border-white/40 shadow-inner'}`}>
+              <div 
+                className={`h-full transition-all duration-1000 ease-out ${isHighContrast ? 'bg-black' : 'bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.8)]'}`}
+                style={{ width: `${stats.progressPercent}%` }}
+              ></div>
+            </div>
+          </div>
+        </header>
+
+        <div className="space-y-12">
+          {tripData.map((day, dayIndex) => (
+            <section key={day.id} className="relative" ref={el => dayRefs.current[dayIndex] = el}>
+              
+              <div className="sticky top-4 z-30 mb-6">
+                <div className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl backdrop-blur-xl shadow-sm ${isHighContrast ? 'bg-white border-2 border-black' : (currentTheme === 'day' ? 'bg-white/80 border border-white/80' : 'bg-slate-800/80 border border-white/20')}`}>
+                  <CalendarDays className={`w-5 h-5 ${isHighContrast ? 'text-black' : 'text-blue-600'}`} />
+                  <h2 className={`text-xl font-bold ${textPrimary}`}>{day.title}</h2>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {day.blocks.map((block, bIdx) => {
+                  const activeIdx = getActiveIndex(block.id);
+                  const inactiveIdx = activeIdx === 0 ? 1 : 0;
+                  const primary = block.options[activeIdx];
+                  const alternative = block.options[inactiveIdx];
+                  const isCompleted = completedItems[block.id];
+                  const hasTicket = ticketsSecured[primary.id];
+
+                  return (
+                    <div key={block.id} className="relative">
+                      
+                      <div className="flex flex-col md:flex-row gap-3 md:gap-6">
+                        
+                        <div className="md:w-24 flex-shrink-0 flex md:flex-col items-center md:items-end gap-2 md:pt-4 md:border-r-2 border-slate-300/50 md:pr-6">
+                          <span className={`text-sm font-bold flex items-center gap-1 ${isHighContrast ? 'text-black' : 'text-blue-600'}`}>
+                            <Clock size={14} /> {block.time}
+                          </span>
+                          <span className={`text-xs font-semibold uppercase tracking-wider ${textSecondary}`}>{block.label}</span>
+                        </div>
+
+                        <div className="flex-grow space-y-3">
+                          
+                          <div 
+                            onClick={() => isRoutingMode ? handleRouteSelection(primary) : handleToggleComplete(block.id)}
+                            className={`group relative overflow-hidden rounded-3xl transition-all duration-500 ease-out cursor-pointer transform active:scale-[0.98] ${
+                              isRoutingMode && routePoints.find(p => p.id === primary.id) 
+                                ? `ring-4 ring-blue-500 ${glassCard}` 
+                                : (isCompleted ? glassCardCompleted : glassCard)
+                            }`}
+                          >
+                            <div className="flex flex-col sm:flex-row">
+                              
+                              <div className="relative w-full sm:w-32 h-32 sm:h-auto flex-shrink-0 bg-slate-200">
+                                <img 
+                                  src={primary.image} 
+                                  alt={primary.title}
+                                  loading="lazy"
+                                  onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=600&q=80'; }}
+                                  className={`w-full h-full object-cover transition-all duration-700 ${isCompleted && !isRoutingMode ? 'grayscale opacity-60' : 'group-hover:scale-105'}`}
+                                />
+                                <div className="absolute top-3 left-3 sm:top-1/2 sm:-translate-y-1/2 sm:-right-4 sm:left-auto z-10 bg-white/20 rounded-full p-1 backdrop-blur-md">
+                                  {isEditMode ? (
+                                    <button 
+                                      onClick={(e) => { e.stopPropagation(); setEditingItem({ dayId: day.id, blockId: block.id, optionId: primary.id, data: { ...primary } }); }}
+                                      className="w-10 h-10 rounded-full bg-amber-500 border-2 border-white flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
+                                    >
+                                      <Edit3 size={18} className="text-white" />
+                                    </button>
+                                  ) : isRoutingMode ? (
+                                    <div className={`w-8 h-8 rounded-full border-2 transition-all duration-300 flex items-center justify-center font-bold shadow-inner ${
+                                      routePoints.find(p => p.id === primary.id)
+                                        ? 'bg-blue-600 border-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' 
+                                        : 'bg-white/80 border-gray-400 text-transparent'
+                                    }`}>
+                                      {routePoints.findIndex(p => p.id === primary.id) + 1 || ''}
+                                    </div>
+                                  ) : (
+                                    <div className={`w-8 h-8 rounded-full border-2 transition-all duration-300 flex items-center justify-center shadow-inner ${
+                                      isCompleted 
+                                        ? 'bg-blue-600 border-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.4)]' 
+                                        : 'bg-white/80 border-gray-400'
+                                    }`}>
+                                      <Check size={18} className={`text-white transition-transform duration-300 ${isCompleted ? 'scale-100 opacity-100' : 'scale-50 opacity-0'}`} strokeWidth={3} />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="p-4 sm:p-5 flex-grow flex flex-col justify-between">
+                                <div>
+                                  <div className="flex justify-between items-start gap-2 mb-1">
+                                    <h3 className={`text-lg sm:text-xl font-bold leading-tight flex items-center flex-wrap gap-2 ${isCompleted ? 'line-through text-slate-500' : textPrimary}`}>
+                                      {primary.title}
+                                      {primary.halal && (
+                                        <span className="inline-flex items-center justify-center bg-green-100 text-green-700 rounded-full p-1" title="Halal / Muslim-friendly">
+                                          <ShieldCheck size={16} />
+                                        </span>
+                                      )}
+                                    </h3>
+                                    <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full border font-bold text-sm ${isHighContrast ? 'border-black' : 'bg-slate-100/50 backdrop-blur-sm border-slate-200'}`}>
+                                      £{primary.price}
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="flex flex-wrap gap-2 mt-3 relative z-20">
+                                    <button 
+                                      onClick={(e) => openMaps(e, primary.mapsQuery)}
+                                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${isHighContrast ? 'bg-black text-white' : 'bg-blue-600/10 text-blue-700 hover:bg-blue-600/20'}`}
+                                    >
+                                      <Map size={14} /> Maps Route
+                                    </button>
+                                    
+                                    {primary.bookingLink && (
+                                       <button 
+                                       onClick={(e) => openBooking(e, primary.bookingLink)}
+                                       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${isHighContrast ? 'border border-black text-black' : 'bg-white/50 border border-slate-200 text-slate-700 hover:bg-white'}`}
+                                     >
+                                       <ExternalLink size={14} /> Offizielle Seite
+                                     </button>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="mt-4 relative z-20" onClick={(e) => primary.requiresTicket && handleTicketToggle(e, primary.id)}>
+                                  <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                                    isHighContrast ? 'border-black text-black' : (
+                                    primary.requiresTicket 
+                                      ? (hasTicket 
+                                          ? 'bg-green-500/10 border-green-500/30 text-green-700 cursor-pointer hover:bg-green-500/20' 
+                                          : 'bg-red-500/10 border-red-500/30 text-red-600 cursor-pointer hover:bg-red-500/20')
+                                      : 'bg-slate-500/10 border-slate-500/20 text-slate-600'
+                                    )
+                                  }`}>
+                                    {primary.requiresTicket ? (hasTicket ? <Check size={14} /> : <Ticket size={14} />) : <Info size={14} />}
+                                    {primary.requiresTicket ? (hasTicket ? 'Ticket vorhanden ✅' : primary.hint) : primary.hint}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className={`absolute top-0 left-0 w-1.5 h-full ${isHighContrast ? 'bg-black' : 'bg-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.8)]'}`}></div>
+                          </div>
+
+                          {!isCompleted && (
+                            <div className="flex justify-center -my-3 relative z-10">
+                              <div className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 ${isHighContrast ? 'bg-white border border-black' : 'bg-slate-200/80 backdrop-blur-md border border-white/50 text-slate-500'}`}>
+                                <RefreshCw size={10} /> Alternative
+                              </div>
+                            </div>
+                          )}
+
+                          {!isCompleted && (
+                            <div className={`relative flex items-center p-2 rounded-2xl transition-all ${isHighContrast ? 'border border-gray-400 bg-gray-50' : 'bg-white/30 backdrop-blur-md border border-white/40'}`}>
+                               <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 mr-3 hidden sm:block relative bg-slate-200">
+                                  <img 
+                                    src={alternative.image} 
+                                    alt={alternative.title} 
+                                    className="w-full h-full object-cover opacity-80" 
+                                    loading="lazy" 
+                                    onError={(e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=600&q=80'; }}
+                                  />
+                                  {isEditMode && (
+                                     <button 
+                                       onClick={(e) => { e.stopPropagation(); setEditingItem({ dayId: day.id, blockId: block.id, optionId: alternative.id, data: { ...alternative } }); }}
+                                       className="absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity hover:bg-black/60 z-10"
+                                     >
+                                       <Edit3 size={16} className="text-white" />
+                                     </button>
+                                  )}
+                               </div>
+                               <div className="flex-grow min-w-0 pr-2">
+                                  <h4 className={`text-sm font-bold truncate ${textPrimary}`}>
+                                    {alternative.title} {alternative.halal && '🛡️'}
+                                  </h4>
+                                  <div className={`text-xs mt-0.5 truncate ${textSecondary}`}>
+                                    £{alternative.price} • {alternative.hint}
+                                  </div>
+                               </div>
+                               <button
+                                  onClick={(e) => handleSwap(e, block.id)}
+                                  className={`flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl transition-all flex-shrink-0 ${isHighContrast ? 'bg-black text-white' : 'bg-blue-600 text-white shadow-md hover:shadow-lg hover:bg-blue-700'}`}
+                                >
+                                  <RefreshCw size={14} />
+                                  <span className="hidden sm:inline">Als Primär</span>
+                                </button>
+                                {isEditMode && (
+                                    <button 
+                                       onClick={(e) => { e.stopPropagation(); setEditingItem({ dayId: day.id, blockId: block.id, optionId: alternative.id, data: { ...alternative } }); }}
+                                       className="ml-2 p-2 rounded-xl bg-amber-500 text-white shadow-md block sm:hidden relative z-10"
+                                     >
+                                       <Edit3 size={14} />
+                                     </button>
+                                )}
+                            </div>
+                          )}
+
+                        </div>
+                      </div>
+
+                      {bIdx < day.blocks.length - 1 && (
+                         <div className="flex md:ml-24 pl-6 md:pl-10 py-3 relative">
+                            <div className="absolute left-6 md:left-[10px] top-0 bottom-0 w-px border-l-2 border-dotted border-slate-300 dark:border-slate-600 hidden md:block"></div>
+                            
+                            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold ${isHighContrast ? 'text-gray-600' : 'bg-white/40 backdrop-blur-sm border border-white/30 text-slate-500'}`}>
+                               <ArrowRight size={12} /> {block.travelToNext}
+                            </div>
+                         </div>
+                      )}
+
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+          
+          {/* --- NEU: Aktion-Buttons am Ende der Seite --- */}
+          <div className="pt-10 pb-8 border-t border-slate-300/50 dark:border-white/10">
+            <h3 className={`text-center text-sm font-bold uppercase tracking-widest mb-6 ${textSecondary}`}>Werkzeuge & Tools</h3>
+            <div className="flex flex-col sm:flex-row justify-center gap-4">
+              <button
+                onClick={() => { 
+                  triggerHaptic(); 
+                  setIsRoutingMode(!isRoutingMode);
+                  if(isEditMode) setIsEditMode(false); 
+                  if(isRoutingMode) setRoutePoints([]); 
+                  // Nach oben scrollen, damit der User direkt loslegen kann
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className={`flex justify-center items-center gap-2 px-6 py-3.5 rounded-2xl font-bold transition-all shadow-md w-full sm:w-auto ${
+                  isRoutingMode 
+                    ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.4)]' 
+                    : (isHighContrast ? 'bg-white border-2 border-black text-black' : 'bg-white/50 border border-white/60 text-slate-700 hover:bg-white/80')
+                }`}
+              >
+                <Navigation size={20} />
+                {isRoutingMode ? 'Routen-Modus beenden' : 'Maps Routenplaner'}
+              </button>
+
+              <button
+                onClick={() => { 
+                  triggerHaptic(); 
+                  setIsEditMode(!isEditMode);
+                  if(isRoutingMode) setIsRoutingMode(false);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className={`flex justify-center items-center gap-2 px-6 py-3.5 rounded-2xl font-bold transition-all shadow-md w-full sm:w-auto ${
+                  isEditMode 
+                    ? 'bg-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.4)]' 
+                    : (isHighContrast ? 'bg-white border-2 border-black text-black' : 'bg-white/50 border border-white/60 text-slate-700 hover:bg-white/80')
+                }`}
+              >
+                <Edit3 size={20} />
+                {isEditMode ? 'Bearbeiten beenden' : 'Trip-Daten anpassen'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Floating Routing Bar */}
+      <div className={`fixed bottom-28 left-0 w-full z-40 p-4 pointer-events-none transition-all duration-500 ${isRoutingMode ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0'}`}>
+        <div className="max-w-md mx-auto relative pointer-events-auto">
+          <div className="bg-blue-600/95 backdrop-blur-xl border border-blue-400 rounded-3xl p-4 shadow-[0_10px_40px_-10px_rgba(37,99,235,0.6)] flex items-center justify-between">
+            <div className="text-white">
+              <div className="text-[10px] font-bold opacity-80 uppercase tracking-widest">Routenplaner</div>
+              <div className="font-extrabold text-xl">{routePoints.length} Orte ausgewählt</div>
+            </div>
+            <button 
+              onClick={generateGoogleMapsRoute}
+              disabled={routePoints.length === 0}
+              className={`px-5 py-2.5 rounded-xl font-bold transition-all ${routePoints.length > 0 ? 'bg-white text-blue-700 hover:scale-105 shadow-md' : 'bg-white/20 text-white/50 cursor-not-allowed'}`}
+            >
+              Route Starten
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Floating Budget Bar */}
+      <div className="fixed bottom-0 left-0 w-full z-40 p-4 pb-6 pointer-events-none">
+        <div className="max-w-md mx-auto relative pointer-events-auto">
+          <div className={`backdrop-blur-2xl rounded-3xl p-4 flex items-center justify-between transition-all ${isHighContrast ? 'bg-white border-2 border-black shadow-none' : 'bg-white/80 border border-white/50 shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.1)]'}`}>
+            
+            <div className="flex flex-col">
+              <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${textSecondary}`}>
+                Bisher ausgegeben 
+                <button onClick={() => setIsEditingBudget(true)} className="p-1 hover:bg-black/10 rounded-full transition-colors"><Edit3 size={10}/></button>
+              </span>
+              <div className="flex items-center gap-2 mt-1">
+                <button 
+                  onClick={() => { triggerHaptic(); setIsEuro(!isEuro); }}
+                  className={`flex items-center justify-center p-1.5 rounded-lg transition-colors ${isHighContrast ? 'border border-black' : 'bg-slate-100 hover:bg-slate-200'}`}
+                  title="Währung wechseln"
+                >
+                  <RefreshCw size={14} className={textSecondary} />
+                </button>
+                <span className={`text-2xl font-black ${isHighContrast ? 'text-black' : 'text-slate-800'}`}>
+                  {isEuro ? `€${stats.totalEuro}` : `£${stats.totalPound}`}
+                  <span className="text-sm font-semibold opacity-50 ml-1">/ {isEuro ? `€${stats.limitEuro}` : `£${budgetLimit}`}</span>
+                </span>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+               <div className="text-right mr-2 hidden sm:block">
+                 <div className={`text-xs font-bold ${textPrimary}`}>Erledigt</div>
+                 <div className={`text-xs ${textSecondary}`}>{stats.completedCount} / {stats.totalItems}</div>
+               </div>
+               
+               <div className="relative w-12 h-12 flex items-center justify-center">
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                    <path
+                      className={isHighContrast ? "text-gray-300" : "text-slate-200"}
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none" stroke="currentColor" strokeWidth="3"
+                    />
+                    <path
+                      className={isHighContrast ? "text-black" : "text-blue-600"}
+                      strokeDasharray={`${stats.progressPercent}, 100`}
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none" stroke="currentColor" strokeWidth="3.5"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <span className={`absolute text-[10px] font-bold ${textPrimary}`}>{stats.progressPercent}%</span>
+               </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      {/* Budget Edit Modal */}
+      {isEditingBudget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          <div className={`w-full max-w-sm p-6 rounded-3xl shadow-2xl ${isHighContrast ? 'bg-white border-2 border-black' : 'bg-white/90 backdrop-blur-xl border border-white/50'}`}>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-slate-800">Budget anpassen</h3>
+              <button onClick={() => setIsEditingBudget(false)} className="p-2 bg-slate-100 rounded-full text-slate-600"><X size={20}/></button>
+            </div>
+            
+            <div className="space-y-5">
+              <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
+                <label className="block text-sm font-bold text-slate-700 flex items-center gap-2 mb-2">
+                  <CreditCard size={16} className="text-blue-600" />
+                  Maximales Budget (in £)
+                </label>
+                <input 
+                  type="number" 
+                  value={budgetLimit} 
+                  onChange={(e) => setBudgetLimit(Number(e.target.value))}
+                  className="w-full px-4 py-3 rounded-xl border border-blue-200 bg-white text-lg font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-slate-500 mt-2">Dient als dein Limit in der Fortschrittsanzeige.</p>
+              </div>
+
+              <div className="bg-amber-50/50 p-4 rounded-2xl border border-amber-100">
+                <label className="block text-sm font-bold text-slate-700 flex items-center gap-2 mb-2">
+                  <PlusCircle size={16} className="text-amber-600" />
+                  Zusätzliche Ausgaben (in £)
+                </label>
+                <input 
+                  type="number" 
+                  value={extraExpenses} 
+                  onChange={(e) => setExtraExpenses(Number(e.target.value))}
+                  className="w-full px-4 py-3 rounded-xl border border-amber-200 bg-white text-lg font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+                <p className="text-xs text-slate-500 mt-2">Hier kannst du manuell Geld für Tube, Shopping, Kaffee etc. eintragen. Das wird direkt aufgeschlagen.</p>
+              </div>
+
+              <button 
+                onClick={() => { setIsEditingBudget(false); triggerHaptic(40); }}
+                className="w-full py-3.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors shadow-lg mt-2"
+              >
+                Speichern
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Item Edit Modal */}
+      {editingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          <div className={`w-full max-w-md p-6 rounded-3xl shadow-2xl overflow-y-auto max-h-[90vh] ${isHighContrast ? 'bg-white border-2 border-black' : 'bg-white/95 backdrop-blur-xl border border-white/50'}`}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-slate-800">Aktivität bearbeiten</h3>
+              <button onClick={() => setEditingItem(null)} className="p-2 bg-slate-100 rounded-full text-slate-600"><X size={20}/></button>
+            </div>
+            
+            <div className="space-y-4 text-left">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Titel</label>
+                <input 
+                  type="text" 
+                  value={editingItem.data.title} 
+                  onChange={(e) => setEditingItem({ ...editingItem, data: { ...editingItem.data, title: e.target.value }})}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Preis (£)</label>
+                  <input 
+                    type="number" 
+                    value={editingItem.data.price} 
+                    onChange={(e) => setEditingItem({ ...editingItem, data: { ...editingItem.data, price: Number(e.target.value) }})}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex-1 flex items-center gap-2 mt-5">
+                  <input 
+                    type="checkbox" 
+                    id="halal-edit"
+                    checked={editingItem.data.halal} 
+                    onChange={(e) => setEditingItem({ ...editingItem, data: { ...editingItem.data, halal: e.target.checked }})}
+                    className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500"
+                  />
+                  <label htmlFor="halal-edit" className="text-sm font-bold text-slate-700 flex items-center gap-1">
+                    Halal <ShieldCheck size={16} className="text-green-600"/>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Hinweis (Badge)</label>
+                <input 
+                  type="text" 
+                  value={editingItem.data.hint} 
+                  onChange={(e) => setEditingItem({ ...editingItem, data: { ...editingItem.data, hint: e.target.value }})}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  id="ticket-edit"
+                  checked={editingItem.data.requiresTicket} 
+                  onChange={(e) => setEditingItem({ ...editingItem, data: { ...editingItem.data, requiresTicket: e.target.checked }})}
+                  className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500"
+                />
+                <label htmlFor="ticket-edit" className="text-sm font-bold text-slate-700">Ticket / Reservierung erforderlich?</label>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Maps Suchbegriff</label>
+                <input 
+                  type="text" 
+                  value={editingItem.data.mapsQuery} 
+                  onChange={(e) => setEditingItem({ ...editingItem, data: { ...editingItem.data, mapsQuery: e.target.value }})}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 text-slate-700 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Bild URL</label>
+                <input 
+                  type="text" 
+                  value={editingItem.data.image} 
+                  onChange={(e) => setEditingItem({ ...editingItem, data: { ...editingItem.data, image: e.target.value }})}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-slate-50 text-slate-700 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <button 
+                onClick={() => {
+                  setTripData(prev => prev.map(day => {
+                    if (day.id !== editingItem.dayId) return day;
+                    return {
+                      ...day,
+                      blocks: day.blocks.map(block => {
+                        if (block.id !== editingItem.blockId) return block;
+                        return {
+                          ...block,
+                          options: block.options.map(opt => {
+                            if (opt.id !== editingItem.optionId) return opt;
+                            return { ...opt, ...editingItem.data };
+                          })
+                        }
+                      })
+                    }
+                  }));
+                  setEditingItem(null);
+                  triggerHaptic(50);
+                }}
+                className="w-full mt-4 py-3 bg-blue-600 text-white rounded-xl font-bold flex justify-center items-center gap-2 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/30"
+              >
+                <Save size={18} /> Änderungen Speichern
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
